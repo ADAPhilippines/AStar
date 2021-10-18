@@ -1,10 +1,12 @@
 module Table
 (
     TableRow,
+    TableState,
     generateTable,
     genTableState,
     cellState,
     Cell(..),
+    Point(Point),
     fromImage
 ) where
 
@@ -12,7 +14,8 @@ import Graphics.Image (Pixel (PixelRGB), RGB, cols, displayImage, index, readIma
 import Graphics.Image.Interface.Vector (VS (VS))  
 import Data.List (transpose)
 
-data Cell       =   Open | Blocked | Dirty | Occupied | Start | End
+data Cell       =   Open | Blocked | Dirty | Occupied | Path | Start | End deriving (Eq)
+data Point      =   Point Int Int deriving (Eq)
 type RowState   =   [Cell]
 type TableState =   [RowState]
 type TableRow   =   String
@@ -22,9 +25,10 @@ generateRoof = "-----"
 
 generateCell :: Cell -> [Char]
 generateCell Open       =   "|   |"
-generateCell Blocked    =   "| x |"
+generateCell Blocked    =   "| X |"
 generateCell Dirty      =   "| * |"
 generateCell Occupied   =   "| O |"
+generateCell Path       =   "| @ |"
 generateCell Start      =   "| S |"
 generateCell End        =   "| E |"
 
@@ -44,8 +48,8 @@ generateTable all@(h:_) = roof ++ "\n" ++ rows
 genTableState :: Int -> Int -> TableState
 genTableState w h = replicate h $ replicate w Open
 
-cellState :: TableState -> Cell -> Int -> Int -> TableState
-cellState ts ctv x y = map (\i -> row i (ts !! i)) [0..length ts - 1]
+cellState :: TableState -> Cell -> Point -> TableState
+cellState ts ctv (Point x y) = map (\i -> row i (ts !! i)) [0..length ts - 1]
   where
     row accY rs = map (\i -> consCell i accY (rs !! i)) [0..length rs - 1]
     consCell accX accY ccv
