@@ -1,0 +1,6 @@
+packages:
+    AStar
+    Table
+
+allow-newer:
+  base
