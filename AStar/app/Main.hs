@@ -3,9 +3,12 @@ import Graphics.Image.Interface.Vector (VS (VS))
 import Table (Point(Point), Cell (Blocked, Open, Start, End, Dirty, Occupied, Path), TableRow, TableState, cellState, genTableState, generateTable, fromImage, drawTable)
 import Data.List (nub)
 import GHC.Conc.IO (threadDelay)
+import System.Random ( getStdGen, Random (randomRs) )
+import GHC.IO.Handle.Types (BufferMode(BlockBuffering))
 
-data Node = EmptyNode | Node Point FScore Node deriving (Eq)
+data Node = EmptyNode | Node Point FScore CameFrom deriving (Eq)
 type FScore = Int
+type CameFrom = Node
 
 main :: IO ()
 main = do
@@ -13,35 +16,26 @@ main = do
   let stateFromImage = fromImage cellSize maze
       startAdded = cellState stateFromImage Start startingPoint
       initialState = cellState startAdded End endingPoint
-  generateImage initialState
   drawTable initialState
   evalNode initialState (Node startingPoint (hScore startingPoint) EmptyNode) []
-
-generateImage :: TableState -> IO ()
-generateImage ts = do
-  writeImage "/Users/perkinsjonong/Public/Projects/ADAPH/AStar/test.png" img
-    where
-      img = makeImageR VU (400, 400) (uncurry pixelVal) :: Image VU RGB Double
-      pixelVal x y
-        | Open == cs x y = PixelRGB  1 1 1
-        | otherwise = PixelRGB 0.15294117647058825 0.1568627450980392 0.15294117647058825
-      cs x y = (ts !! (x `div` 20)) !! (y `div` 20)
 
 evalNode :: TableState -> Node -> [Node] -> IO ()
 evalNode _ EmptyNode _ = return ()
 evalNode ts node@(Node p f _) s
   | h == 1 = do
-    drawTable $ updateCellStates ts Path $ finalPath node
+    drawTable finalTableState
+    generateImage $ cellState finalTableState Start startingPoint
     putStrLn "Endpoint found!"
   | otherwise = do
-    threadDelay 125000
     drawTable updatedTableState
-    evalNode updatedTableState nextNode (tail newSet)
+    generateImage $ cellState updatedTableState Start startingPoint
+    threadDelay 125000
+    evalNode updatedTableState (head newSet) (tail newSet)
   where h = hScore p
         n = neighbors node ts
-        newSet = sortNodes(nub s ++ n)
-        nextNode = head newSet
+        newSet = sortNodes (n ++ s)
         updatedTableState = updateCellStates (cellState ts Occupied p) Dirty n
+        finalTableState = updateCellStates ts Path $ finalPath node
 
 finalPath :: Node -> [Node]
 finalPath EmptyNode = []
@@ -61,11 +55,23 @@ sortNodes (nh@(Node _ fh _):ns) =
 
 neighbors :: Node -> TableState -> [Node]
 neighbors EmptyNode _ = []
-neighbors n@(Node (Point x y) _ _) ts = [Node p (gScore p + hScore p) n | p <- ps, isValid p]
+neighbors n@(Node (Point x y) _ _) ts = [Node p (gScore p + (2*hScore p)) n | p <- ps, isValid p]
   where
     ps = [Point (x-1) y, Point (x+1) y, Point x (y-1), Point x (y+1)]
     isValid (Point x' y') = ((ts !! y') !! x') == Open
 
+generateImage :: TableState -> IO ()
+generateImage ts = do
+  writeImage "/Users/perkinsjonong/Public/Projects/ADAPH/AStar/test.png" img
+    where
+      img = makeImageR VU (400, 400) (uncurry pixelVal) :: Image VU RGB Double
+      pixelVal x y
+        | Blocked == cs x y = PixelRGB 0.15294117647058825 0.1568627450980392 0.15294117647058825
+        | Path == cs x y = PixelRGB 0.921 0.078 0.078
+        | End == cs x y || Start == cs x y = PixelRGB 0.078 0.921 0.105
+        | Occupied == cs x y = PixelRGB 0.078 0.192 0.921
+        | otherwise = PixelRGB 1 1 1
+      cs x y = (ts !! (x `div` 20)) !! (y `div` 20)
 
 startingPoint :: Point
 startingPoint = Point 1 1
@@ -85,3 +91,12 @@ hScore p = distance p endingPoint
 gScore :: Point -> Int
 gScore p = distance p startingPoint
 
+-- start :: TableState -> IO Point
+-- start ts = do
+--   gen <- getStdGen
+--   let rnds = randomRs(1,cellSize) gen
+--       xs = filter odd rnds
+--       ys = filter even rnds
+--       p = head $ takeWhile isValid $ zip xs ys
+--       isValid (x,y) = (ts !! x) !! y /= Blocked
+--   return $ uncurry Point p
