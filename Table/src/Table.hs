@@ -5,6 +5,7 @@ module Table
     generateTable,
     genTableState,
     cellState,
+    drawTable,
     Cell(..),
     Point(Point),
     fromImage
@@ -76,3 +77,8 @@ blackPixel = PixelRGB 0.15294117647058825 0.1568627450980392 0.15294117647058825
 
 whitePixel :: Pixel RGB Double
 whitePixel = PixelRGB 1 1 1
+
+drawTable :: TableState -> IO ()
+drawTable ts = do
+  putStr "\ESC[2J`"
+  putStrLn $ generateTable ts

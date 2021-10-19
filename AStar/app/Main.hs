@@ -1,6 +1,6 @@
 import Graphics.Image (readImageRGB, makeImageR, Pixel (PixelRGB, PixelY), cols, rows, VU (VU), writeImage, Image, RGB)
 import Graphics.Image.Interface.Vector (VS (VS))
-import Table (Point(Point), Cell (Blocked, Open, Start, End, Dirty, Occupied, Path), TableRow, TableState, cellState, genTableState, generateTable, fromImage)
+import Table (Point(Point), Cell (Blocked, Open, Start, End, Dirty, Occupied, Path), TableRow, TableState, cellState, genTableState, generateTable, fromImage, drawTable)
 import Data.List (nub)
 import GHC.Conc.IO (threadDelay)
 
@@ -16,7 +16,6 @@ main = do
   generateImage initialState
   drawTable initialState
   evalNode initialState (Node startingPoint (hScore startingPoint) EmptyNode) []
-
 
 generateImage :: TableState -> IO ()
 generateImage ts = do
@@ -59,11 +58,6 @@ sortNodes (nh@(Node _ fh _):ns) =
   let smallerSorted = sortNodes [ n | n@(Node _ f _) <- ns, f <= fh ]
       biggerSorted = sortNodes [ n | n@(Node _ f _) <- ns, f > fh ]
   in  smallerSorted ++ [nh] ++ biggerSorted
-
-drawTable :: TableState -> IO ()
-drawTable ts = do
-  putStr "\ESC[2J`"
-  putStrLn $ generateTable ts
 
 neighbors :: Node -> TableState -> [Node]
 neighbors EmptyNode _ = []
